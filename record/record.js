@@ -1,10 +1,12 @@
 // record.js – Cross-platform Screen+Audio Recording (Linux & macOS)
+// -----------------------------------------------------------------------------
 const os        = require('os');
 const fs        = require('fs-extra');
 const path      = require('path');
 const cp        = require('child_process');
 const puppeteer = require('puppeteer');
 
+// ───────────────────────────── CONFIG ──────────────────────────────
 const CFG = {
   URL:          'http://localhost:3000',
   OUT:          'data/chat.mp4',
@@ -18,10 +20,12 @@ fs.ensureDirSync(path.dirname(CFG.OUT));
 function startFFmpeg() {
   const isLinux = os.platform() === 'linux';
   let args;
+
   if (isLinux) {
     const w   = CFG.VIEWPORT.width  * CFG.VIEWPORT.deviceScaleFactor;
     const h   = CFG.VIEWPORT.height * CFG.VIEWPORT.deviceScaleFactor;
     const src = process.env.PULSE_SOURCE || 'default';
+
     args = [
       '-y',
       '-f', 'x11grab',
@@ -45,6 +49,7 @@ function startFFmpeg() {
     const h         = CFG.VIEWPORT.height * CFG.VIEWPORT.deviceScaleFactor;
     const screenIdx = process.env.SCREEN_IDX || 4;
     const audioIdx  = process.env.AUDIO_IDX  || 2;
+
     args = [
       '-f', 'avfoundation',
       '-capture_cursor', '0',
@@ -61,11 +66,13 @@ function startFFmpeg() {
       CFG.OUT,
     ];
   }
+
   console.log('🎥  FFmpeg', args.join(' '));
   return cp.spawn('ffmpeg', args, { stdio: 'inherit' });
 }
 
-(async () => {
+// ─────────────────────────── Main Flow ────────────────────────────
+;(async () => {
   const browser = await puppeteer.launch({
     headless: false,
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
@@ -84,24 +91,32 @@ function startFFmpeg() {
   });
 
   const page = await browser.newPage();
-  // CSS für scroll-smooth & Scrollbar ausblenden
+  // Scrollbar ausblenden & smooth scroll (kein Scrollen)
   await page.addStyleTag({ content: `
-    ::-webkit-scrollbar { display: none; }
-    #chat { scroll-behavior: smooth; }
+    html, body, #chat {
+      overflow: hidden !important;
+      scrollbar-width: none !important;
+    }
+    ::-webkit-scrollbar { display: none !important; }
   `});
 
+  // Warte bis Seite geladen
   for (let i = 0; i < 30; i++) {
     try {
       await page.goto(CFG.URL, { waitUntil: 'networkidle2', timeout: 5000 });
       console.log('🌐 Seite geladen');
       break;
     } catch {
+      console.log(`↪︎ Server nicht bereit – retry ${i + 1}`);
       await new Promise(r => setTimeout(r, 1000));
       if (i === 29) throw new Error('Server unreachable');
     }
   }
 
+  // Starte Recording
   const ff = startFFmpeg();
+
+  // Warte auf Quiet-Period oder Hard-Timeout
   await Promise.race([
     page.evaluate(({ QUIET_MS }) => new Promise(res => {
       let last = Date.now();
@@ -121,6 +136,7 @@ function startFFmpeg() {
   console.log('⏹ Stoppe FFmpeg …');
   ff.kill('SIGINT');
   await new Promise(r => ff.on('exit', r));
+
   await browser.close();
   console.log('✅ Video gespeichert →', CFG.OUT);
 })();
