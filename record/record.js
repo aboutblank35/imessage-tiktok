@@ -24,7 +24,7 @@ function startFFmpeg() {
   if (isLinux) {
     const w   = CFG.VIEWPORT.width  * CFG.VIEWPORT.deviceScaleFactor;
     const h   = CFG.VIEWPORT.height * CFG.VIEWPORT.deviceScaleFactor;
-    const src = process.env.PULSE_SOURCE || 'default';
+    const src = process.env.PULSE_SOURCE;
 
     args = [
       '-y',
@@ -47,13 +47,14 @@ function startFFmpeg() {
   } else {
     const w         = CFG.VIEWPORT.width  * CFG.VIEWPORT.deviceScaleFactor;
     const h         = CFG.VIEWPORT.height * CFG.VIEWPORT.deviceScaleFactor;
-    const screenIdx = process.env.SCREEN_IDX || 4;
-    const audioIdx  = process.env.AUDIO_IDX  || 2;
+    const screenIdx = process.env.SCREEN_IDX || 0;
+    const audioIdx  = process.env.AUDIO_IDX  || 1;
 
     args = [
       '-f', 'avfoundation',
       '-capture_cursor', '0',
       '-framerate', String(CFG.FPS),
+      '-video_size', `${w}x${h}`,
       '-i', `${screenIdx}:${audioIdx}`,
       '-vf', `scale=${w}:${h},format=yuv420p`,
       '-vcodec', 'libx264',
@@ -80,6 +81,9 @@ function startFFmpeg() {
     args: [
       `--app=${CFG.URL}`,
       '--kiosk',
+      '--start-fullscreen',
+      '--hide-scrollbars',
+      '--disable-infobars',
       '--autoplay-policy=no-user-gesture-required',
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -91,52 +95,41 @@ function startFFmpeg() {
   });
 
   const page = await browser.newPage();
-  // Scrollbar ausblenden & smooth scroll (kein Scrollen)
+  // Scrollbar komplett entfernen & kein Overflow
   await page.addStyleTag({ content: `
-    html, body, #chat {
-      overflow: hidden !important;
-      scrollbar-width: none !important;
-    }
+    html, body, #chat { overflow: hidden !important; }
     ::-webkit-scrollbar { display: none !important; }
   `});
 
-  // Warte bis Seite geladen
+  // Warte bis Seite bereit
   for (let i = 0; i < 30; i++) {
     try {
       await page.goto(CFG.URL, { waitUntil: 'networkidle2', timeout: 5000 });
       console.log('🌐 Seite geladen');
       break;
     } catch {
-      console.log(`↪︎ Server nicht bereit – retry ${i + 1}`);
       await new Promise(r => setTimeout(r, 1000));
       if (i === 29) throw new Error('Server unreachable');
     }
   }
 
-  // Starte Recording
   const ff = startFFmpeg();
-
-  // Warte auf Quiet-Period oder Hard-Timeout
+  // Recording bis quiet/hard
   await Promise.race([
     page.evaluate(({ QUIET_MS }) => new Promise(res => {
       let last = Date.now();
-      const obs = new MutationObserver(() => { last = Date.now(); });
+      const obs = new MutationObserver(() => last = Date.now());
       obs.observe(document.querySelector('#chat') || document.body, { childList: true, subtree: true });
       const id = setInterval(() => {
-        if (Date.now() - last > QUIET_MS) {
-          clearInterval(id);
-          obs.disconnect();
-          res('quiet');
-        }
+        if (Date.now() - last > QUIET_MS) { clearInterval(id); obs.disconnect(); res(); }
       }, 500);
     }), { QUIET_MS: CFG.QUIET_MS }),
-    new Promise(res => setTimeout(() => res('hard'), CFG.HARD_TIMEOUT)),
+    new Promise(res => setTimeout(res, CFG.HARD_TIMEOUT)),
   ]);
 
   console.log('⏹ Stoppe FFmpeg …');
   ff.kill('SIGINT');
   await new Promise(r => ff.on('exit', r));
-
   await browser.close();
   console.log('✅ Video gespeichert →', CFG.OUT);
 })();
