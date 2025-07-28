@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iMessage Gruppenchat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="chat-container">
+
+    <!-- Status-Bar -->
+    <div class="status-bar">
+      <div class="status-left">17:41</div>
+      <div class="status-right">
+        <span class="icon signal">📶</span>
+        <span class="icon wifi">📡</span>
+        <span class="icon battery">🔋</span>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+      <div class="h-left">
+        <span class="icon back">‹</span>
+        <span class="icon unread">1</span>
+      </div>
+      <div class="h-center">
+        <div id="avatars" class="avatars"></div>
+        <div id="group-title" class="group-title"></div>
+      </div>
+      <div class="h-right">
+        <span class="icon video">📹</span>
+        <span class="icon info">ℹ️</span>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="chat" id="chat"></div>
+
+    <!-- Input -->
+    <div class="input-bar">
+      <span class="icon plus">＋</span>
+      <input type="text" placeholder="iMessage">
+      <span class="icon mic">🎤</span>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
