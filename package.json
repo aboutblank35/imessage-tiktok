@@ -1,11 +1,11 @@
 {
   "name": "imessage-tiktok",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "start": "live-server public --port=3000",
     "record": "node record/record.js",
+    "record:mac": "node record/record_mac.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -18,5 +18,14 @@
     "puppeteer": "^19.11.1",
     "puppeteer-screen-recorder": "^3.0.6",
     "puppeteer-stream": "^3.0.20"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aboutblank35/imessage-tiktok.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aboutblank35/imessage-tiktok/issues"
+  },
+  "homepage": "https://github.com/aboutblank35/imessage-tiktok#readme",
+  "description": ""
 }
