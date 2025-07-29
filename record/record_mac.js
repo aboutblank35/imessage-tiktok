@@ -4,12 +4,12 @@ const puppeteer = require('puppeteer');
 const { execSync, spawn } = require('child_process');
 const { PuppeteerScreenRecorder } = require('puppeteer-screen-recorder');
 
-// Konfiguration
+// Konfiguration - ANGEPASST FÜR NEUE IMPLEMENTIERUNG
 const CFG = {
   URL: 'http://localhost:3000',
   OUT_DIR: 'data',
   FPS: 60,
-  VIEWPORT: { width: 360, height: 640, scale: 2 },
+  VIEWPORT: { width: 375, height: 667, scale: 2 }, // Angepasst an neue Handy-Größe
   INACTIVITY_DELAY: 5000,
   MIN_DURATION: 10000,
   MAX_DURATION: 300000,
@@ -17,10 +17,12 @@ const CFG = {
     "BlackHole 2ch",
     "MacBook Pro-Mikrofon",
     ":0"
-  ]
+  ],
+  MESSAGE_SELECTOR: '.message', // Neuer Selektor für Nachrichten
+  TYPING_SELECTOR: '.typing-indicator' // Neuer Selektor für Typing-Animation
 };
 
-// Hilfsfunktionen
+// Hilfsfunktionen (unverändert)
 const log = (msg) => console.log(`[${new Date().toISOString()}] ${msg}`);
 const error = (msg) => console.error(`[${new Date().toISOString()}] ❌ ${msg}`);
 
@@ -74,7 +76,7 @@ async function getVideoDuration(file) {
     tempAudio = path.join(CFG.OUT_DIR, `temp_${timestamp}.m4a`);
     finalOutput = path.join(CFG.OUT_DIR, `final_${timestamp}.mp4`);
 
-    // 2. Audio-Aufnahme starten (mit zusätzlichem Monitoring)
+    // 2. Audio-Aufnahme starten
     log(`🔊 Starte Audio-Aufnahme mit ${audioDevice}...`);
     audioProcess = spawn('ffmpeg', [
       '-f', 'avfoundation',
@@ -83,7 +85,6 @@ async function getVideoDuration(file) {
       '-y', tempAudio
     ], { stdio: 'pipe', shell: true });
 
-    // Audio-Prozess-Überwachung
     audioProcess.stderr.on('data', (data) => {
       const output = data.toString();
       if (output.includes('Input/output error')) {
@@ -112,10 +113,10 @@ async function getVideoDuration(file) {
       timeout: 30000
     });
 
-    // 5. Warte auf initiale Nachrichten
+    // 5. Warte auf initiale Nachrichten - ANGEPASST FÜR NEUE SELEKTOREN
     log('👀 Warte auf erste Nachricht...');
-    await page.waitForSelector('.message', { timeout: 10000 });
-    let messageCount = await page.evaluate(() => document.querySelectorAll('.message').length);
+    await page.waitForSelector(CFG.MESSAGE_SELECTOR, { timeout: 10000 });
+    let messageCount = await page.evaluate((sel) => document.querySelectorAll(sel).length, CFG.MESSAGE_SELECTOR);
     log(`📜 Initiale Nachrichten gefunden: ${messageCount}`);
 
     // 6. Video-Recorder starten
@@ -134,19 +135,26 @@ async function getVideoDuration(file) {
     const startTime = Date.now();
     let lastMsgTime = Date.now();
 
-    // 7. Nachrichtenüberwachung
+    // 7. Nachrichtenüberwachung - ERWEITERT FÜR TYPING-INDICATOR
     log('⏱️ Überwache Chat-Aktivität...');
     while (true) {
       const currentTime = Date.now();
       const activeDuration = currentTime - startTime;
       const inactiveDuration = currentTime - lastMsgTime;
 
-      // Neue Nachrichten prüfen
-      const newCount = await page.evaluate(() => document.querySelectorAll('.message').length);
-      if (newCount > messageCount) {
-        messageCount = newCount;
+      // Neue Nachrichten oder Typing-Indicator prüfen
+      const newCount = await page.evaluate((sel) => document.querySelectorAll(sel).length, CFG.MESSAGE_SELECTOR);
+      const isTyping = await page.evaluate((sel) => document.querySelector(sel) !== null, CFG.TYPING_SELECTOR);
+      
+      if (newCount > messageCount || isTyping) {
+        if (newCount > messageCount) {
+          messageCount = newCount;
+          log(`📩 Neue Nachricht erkannt (${messageCount} total)`);
+        }
+        if (isTyping) {
+          log(`✍️ Typing-Indicator aktiv`);
+        }
         lastMsgTime = currentTime;
-        log(`📩 Neue Nachricht erkannt (${messageCount} total)`);
       }
 
       // Beendigungskriterien
@@ -167,7 +175,7 @@ async function getVideoDuration(file) {
     audioProcess.kill('SIGINT');
     await browser.close();
 
-    // 9. Überprüfen ob Audio-Datei existiert
+    // 9. Medien kombinieren (unverändert)
     const audioExists = fs.existsSync(tempAudio) && fs.statSync(tempAudio).size > 0;
     
     if (audioExists) {

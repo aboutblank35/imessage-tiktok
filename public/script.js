@@ -1,181 +1,108 @@
-// chatPlayer.js – Auto‑Replay mit variablem Tipp‑Sound
-// ---------------------------------------------------------------
-// • Läuft vollautomatisch – keine Tastatur‑Steuerung nötig
-// • Tipp‑Sound: Zufälliger Ausschnitt, spielt exakt so lang wie getippt wird
-// • Pop‑Sound bei jeder Nachricht
-// • Kein Pause/Resume mehr, Nachrichten laufen immer durch
-// ---------------------------------------------------------------
-
 (() => {
-  // ───────────────────────── SETTINGS ──────────────────────────
+  // Konfiguration
   const CFG = {
-    DATA_URL:   'data/chat.json',
-    VIEWER:     '👀 The Viewer',
-    MAX_AVATARS: 5,
-
-    MIN_DELAY:   500,
-    CHAR_DELAY:  [25, 35],
-    LONG_MSG_THRESHOLD:      120,
-    LONG_MSG_PAUSE_PER_CHAR:  30,
-
-    ENABLE_SOUND: true,
-    SOUND_SRC: {
-      typing: 'sounds/typing.mp3',
-      pop:    'sounds/pop.mp3',
-    },
-    VOLUME: 0.8,
+    DATA_URL: 'data/chat.json',
+    VIEWER: '👀 The Viewer',
+    
+    // Timing
+    BASE_READ_TIME: 1500,
+    CHAR_READ_TIME: 25,
+    MIN_DELAY: 400,
+    TYPING_DURATION: 1000
   };
 
-  // ───────────────────────── DOM REFS ──────────────────────────
+  // DOM-Elemente
   const EL = {
-    chat:   document.getElementById('chat'),
-    avs:    document.getElementById('avatars'),
-    title:  document.getElementById('group-title'),
-  };
-  if (!EL.chat || !EL.avs || !EL.title) {
-    console.error('[chatPlayer] benötigte DOM‑Elemente fehlen');
-    return;
-  }
-
-  // ───────────────────────── UTILITIES ─────────────────────────
-  const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-  const sleep   = (ms) => new Promise(r => setTimeout(r, ms));
-
-  // -------- Sound‑Preload ----------------------------------------------
-  const audioTemplates = {};
-  for (const [key, path] of Object.entries(CFG.SOUND_SRC)) {
-    const a = new Audio(path);
-    a.preload = 'auto';
-    a.volume  = CFG.VOLUME;
-    audioTemplates[key] = a;
-  }
-
-  // Lade Meta‑Daten, damit duration verfügbar ist
-  Promise.all(Object.values(audioTemplates).map(a =>
-    a.readyState >= 1 ? Promise.resolve() : new Promise(res => a.addEventListener('loadedmetadata', res))
-  )).catch(()=>{});
-
-  // Dynamischer Tipp‑Sound
-  function playTypingSound(durationMs) {
-    if (!CFG.ENABLE_SOUND) return;
-    const tpl = audioTemplates.typing;
-    if (!tpl) return;
-
-    const a = tpl.cloneNode();
-    a.volume = CFG.VOLUME;
-
-    const dur = tpl.duration || 0;
-    if (dur) {
-      const maxStart = Math.max(0, dur - durationMs / 1000);
-      a.currentTime = maxStart ? Math.random() * maxStart : 0;
-    }
-    a.play().catch(() => {});
-    setTimeout(() => { a.pause(); a.remove(); }, durationMs + 50);
-  }
-
-  function playPop() {
-    if (!CFG.ENABLE_SOUND) return;
-    const tpl = audioTemplates.pop;
-    if (!tpl) return;
-    const a = tpl.cloneNode();
-    a.volume = CFG.VOLUME;
-    a.play().catch(()=>{});
-  }
-
-  // -------- Avatar -------------------------------------------------------
-  const createAvatar = (i) => {
-    const EMOJIS = ['🤖','🎯','💡','🎲','📚','🦾','🛰','🎭','🧠','⚙️'];
-    const span = document.createElement('span');
-    span.className = 'avatar';
-    span.textContent = EMOJIS[i % EMOJIS.length];
-    return span;
+    chat: document.getElementById('chat'),
+    typingContainer: document.createElement('div')
   };
 
-  async function fetchData() {
-    const res = await fetch(CFG.DATA_URL);
-    if (!res.ok) throw new Error('chat.json not found');
-    return res.json();
-  }
+  EL.typingContainer.className = 'typing-container';
+  EL.typingContainer.innerHTML = `
+    <div class="typing-indicator">
+      <div class="dots">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+    </div>
+  `;
 
-  function renderHeader(agents) {
-    EL.avs.innerHTML = '';
-    agents.slice(0, CFG.MAX_AVATARS).forEach((_, i) => EL.avs.appendChild(createAvatar(i)));
-    if (agents.length > CFG.MAX_AVATARS) {
-      const span = document.createElement('span');
-      span.className = 'avatar-overflow';
-      span.textContent = `+${agents.length - CFG.MAX_AVATARS}`;
-      EL.avs.appendChild(span);
-    }
-    EL.title.textContent = `${agents.length} Personen`;
-  }
+  // Hilfsfunktionen
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-  // ------------ MESSAGE RENDERING ----------------------------------------
-  function appendTyping(side, typingMs) {
-    const typing = document.createElement('div');
-    typing.className = `message ${side} typing`;
-    typing.innerHTML = `
-      <div class="bubble">
-        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-      </div>`;
-    EL.chat.appendChild(typing);
-    EL.chat.scrollTop = EL.chat.scrollHeight;
-    playTypingSound(typingMs);
-    return typing;
-  }
-
-  function appendMessage(agent, content, side, avatarIdx) {
+  // Nachricht erstellen
+  function createMessage(agent, content) {
+    const isViewer = agent === CFG.VIEWER;
     const msg = document.createElement('div');
-    msg.className = `message ${side}`;
-    msg.innerHTML = !side.includes('right') ? `
-      <div class="avatar-container">${createAvatar(avatarIdx).outerHTML}</div>
-      <div class="content">
-        <div class="sender-name">${agent}</div>
-        <div class="bubble pop">${content}</div>
-      </div>` : `
-      <div class="content" style="align-items:flex-end">
-        <div class="bubble pop">${content}</div>
-      </div>`;
-    EL.chat.appendChild(msg);
-    EL.chat.scrollTop = EL.chat.scrollHeight;
-    playPop();
-  }
-
-  // ---------------------- PLAYER LOGIC ------------------------------------
-  async function play(conversation, agents) {
-    let idx = 0, prevLen = 0;
-
-    async function run() {
-      while (idx < conversation.length) {
-        const { agent, content } = conversation[idx];
-        const side = agent === CFG.VIEWER ? 'right' : 'left';
-        const avatarIdx = agents.findIndex(a => a.name === agent);
-
-        const extra = prevLen > CFG.LONG_MSG_THRESHOLD
-          ? (prevLen - CFG.LONG_MSG_THRESHOLD) * CFG.LONG_MSG_PAUSE_PER_CHAR : 0;
-
-        const typingMs = Math.max(CFG.MIN_DELAY, content.length * randInt(...CFG.CHAR_DELAY) + extra);
-        const typingNode = appendTyping(side, typingMs);
-        await sleep(typingMs);
-        typingNode.remove();
-        appendMessage(agent, content, side, avatarIdx);
-
-        prevLen = content.length;
-        idx++;
-      }
+    msg.className = `message ${isViewer ? 'right' : 'left'}`;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    
+    if (!isViewer) {
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'sender-name';
+      nameDiv.textContent = agent;
+      contentDiv.appendChild(nameDiv);
     }
-    await run();
+    
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = content;
+    contentDiv.appendChild(bubble);
+    
+    msg.appendChild(contentDiv);
+    EL.chat.appendChild(msg);
+    
+    // Scrollen zur Nachricht
+    setTimeout(() => {
+      EL.chat.scrollTo({
+        top: EL.chat.scrollHeight,
+        behavior: 'smooth'
+      });
+    }, 10);
   }
 
-  // --------------------------- INIT ---------------------------------------
+  // Typing-Indicator anzeigen
+  async function showTyping() {
+    EL.chat.appendChild(EL.typingContainer);
+    EL.chat.scrollTo({
+      top: EL.chat.scrollHeight,
+      behavior: 'smooth'
+    });
+    await sleep(CFG.TYPING_DURATION);
+    if (EL.typingContainer.parentNode) {
+      EL.chat.removeChild(EL.typingContainer);
+    }
+  }
+
+  // Chat abspielen
+  async function playChat(conversation) {
+    // Initial scroll
+    await sleep(50);
+    EL.chat.scrollTo(0, EL.chat.scrollHeight);
+    
+    for (const {agent, content} of conversation) {
+      const isViewer = agent === CFG.VIEWER;
+      
+      if (!isViewer) {
+        await showTyping();
+      }
+      
+      createMessage(agent, content);
+      await sleep(CFG.MIN_DELAY + (content.length * CFG.CHAR_READ_TIME));
+    }
+  }
+
+  // Initialisierung
   (async () => {
     try {
-      const { agents, conversation } = await fetchData();
-      if (!conversation.length) return;
-      window.__MESSAGE_COUNT__ = conversation.length;
-      renderHeader(agents);
-      await play(conversation, agents);
+      const response = await fetch(CFG.DATA_URL);
+      const {conversation} = await response.json();
+      await playChat(conversation);
     } catch (e) {
-      console.error('[chatPlayer]', e.message);
+      console.error('Fehler:', e);
     }
   })();
 })();
