@@ -14,6 +14,7 @@ body {
   align-items: center;
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  transition: opacity 1s ease-in-out;
 }
 
 /* ===== PHONE-CONTAINER ===== */
@@ -27,7 +28,15 @@ body {
   box-shadow: 0 0 0 6px #1e1e1e;
   display: flex;
   flex-direction: column;
+  transition: transform 1s ease-in-out, filter 1.5s ease-out;
 }
+
+/* ===== TRANSITION EFFECTS ===== */
+.phone.blur {
+  filter: blur(5px);
+  transform: scale(0.98);
+}
+
 
 /* ===== STATUSLEISTE ===== */
 .status-bar {
