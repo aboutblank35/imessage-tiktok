@@ -1,34 +1,43 @@
 ARG VARIANT=20-slim
-FROM node:${VARIANT}
+FROM node:\${VARIANT}
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl xvfb pulseaudio ffmpeg chromium fonts-noto-color-emoji \
-    libxtst6 libxrandr2 libgtk-3-0 libgbm1 libnss3 \
-    libatk1.0-0 libatk-bridge2.0-0 libcups2 libx11-xcb1 \
-    libxcomposite1 libxdamage1 libxss1 libasound2 \
-    && rm -rf /var/lib/apt/lists/*
+# Install system deps
 
-ENV PUPPETEER_SKIP_DOWNLOAD="true"
-ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
+RUN apt-get update && apt-get install -y --no-install-recommends&#x20;
+curl xvfb pulseaudio fonts-noto-color-emoji&#x20;
+libxtst6 libxrandr2 libgtk-3-0 libgbm1 libnss3&#x20;
+libatk1.0-0 libatk-bridge2.0-0 libcups2 libx11-xcb1&#x20;
+libxcomposite1 libxdamage1 libxss1 libasound2&#x20;
+&& rm -rf /var/lib/apt/lists/\*
+
+# Puppeteer needs Chromium
+
+RUN apt-get update && apt-get install -y chromium ffmpeg&#x20;
+&& rm -rf /var/lib/apt/lists/\*
+
+ENV PUPPETEER\_SKIP\_DOWNLOAD=true&#x20;
+PUPPETEER\_EXECUTABLE\_PATH=/usr/bin/chromium
+
+# Create unprivileged user
 
 RUN useradd --create-home recorder
-RUN mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
 
 USER recorder
 WORKDIR /home/recorder
 
-COPY --chown=recorder:recorder package.json package-lock.json ./
+# Copy package files and install dependencies
+
+COPY --chown=recorder\:recorder package.json package-lock.json ./
 RUN npm install --omit=dev --legacy-peer-deps
 
-COPY --chown=recorder:recorder . .
+# Copy source
+
+COPY --chown=recorder\:recorder . .
+
+# Expose app port (if you run server)
 
 EXPOSE 3000
 
-ENTRYPOINT ["sh","-c","\
-    Xvfb :99 -screen 0 720x1280x24 & \
-    sleep 1 && \
-    export DISPLAY=:99 && \
-    npm run start & \
-    until curl -s http://localhost:3000 >/dev/null; do sleep 1; done && \
-    sleep 1 && \
-    node record/record.js"]
+# Start recording directly (no Xvfb needed with in‑tab stream)
+
+ENTRYPOINT \["sh","-c","node record.js"]
