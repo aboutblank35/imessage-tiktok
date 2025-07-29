@@ -3,27 +3,14 @@ FROM node:\${VARIANT}
 
 # Install system dependencies, Chromium, FFmpeg, PulseAudio
 
-RUN apt-get update&#x20;
-&& apt-get install -y --no-install-recommends&#x20;
-curl&#x20;
-pulseaudio&#x20;
-fonts-noto-color-emoji&#x20;
-libxtst6&#x20;
-libxrandr2&#x20;
-libgtk-3-0&#x20;
-libgbm1&#x20;
-libnss3&#x20;
-libatk1.0-0&#x20;
-libatk-bridge2.0-0&#x20;
-libcups2&#x20;
-libx11-xcb1&#x20;
-libxcomposite1&#x20;
-libxdamage1&#x20;
-libxss1&#x20;
-libasound2&#x20;
-chromium&#x20;
-ffmpeg&#x20;
-&& rm -rf /var/lib/apt/lists/\*
+RUN apt-get update &&&#x20;
+apt-get install -y --no-install-recommends&#x20;
+curl pulseaudio fonts-noto-color-emoji&#x20;
+libxtst6 libxrandr2 libgtk-3-0 libgbm1 libnss3&#x20;
+libatk1.0-0 libatk-bridge2.0-0 libcups2 libx11-xcb1&#x20;
+libxcomposite1 libxdamage1 libxss1 libasound2&#x20;
+chromium ffmpeg &&&#x20;
+rm -rf /var/lib/apt/lists/\*
 
 # Puppeteer environment variables
 
@@ -33,6 +20,7 @@ PUPPETEER\_EXECUTABLE\_PATH=/usr/bin/chromium
 # Create non-root user
 
 RUN useradd --create-home recorder
+
 USER recorder
 WORKDIR /home/recorder
 
