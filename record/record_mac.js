@@ -6,12 +6,14 @@ const { PuppeteerScreenRecorder } = require('puppeteer-screen-recorder');
 
 // Konfiguration
 const CFG = {
-  INTRO_URL: 'http://localhost:53694/intro.html',
-  MAIN_URL: 'http://localhost:53694/index.html',
+  INTRO_URL: 'http://localhost:3000/intro.html',
+  MAIN_URL: 'http://localhost:3000/index.html',
+  OUTRO_URL: 'http://localhost:3000/outro.html',
   OUT_DIR: path.join(__dirname, 'data'),
   FPS: 60,
   VIEWPORT: { width: 375, height: 667, deviceScaleFactor: 2 },
   INTRO_DURATION: 2500,
+  OUTRO_DURATION: 2500,
   MIN_DURATION: 10000,
   MAX_DURATION: 300000,
   INACTIVITY_DELAY: 5000,
@@ -106,14 +108,14 @@ async function recordPage(url, outputPath, duration, isMainPage = false) {
       await new Promise(r => setTimeout(r, 1000));
     }
 
-    // Standard-Dauer für Intro
+    // Standard-Dauer für Intro/Outro
     if (!isMainPage) {
       await new Promise(resolve => setTimeout(resolve, duration));
     }
 
     return outputPath;
   } catch (err) {
-    error(`${isMainPage ? 'Chat' : 'Intro'}-Aufnahme fehlgeschlagen: ${err.message}`);
+    error(`${isMainPage ? 'Chat' : url.includes('intro') ? 'Intro' : 'Outro'}-Aufnahme fehlgeschlagen: ${err.message}`);
     throw err;
   } finally {
     await recorder.stop();
@@ -191,7 +193,7 @@ async function getVideoDuration(file) {
 }
 
 (async () => {
-  let introVideo, mainVideo, finalVideo;
+  let introVideo, mainVideo, outroVideo, finalVideo;
   let audioProcess;
 
   try {
@@ -219,17 +221,24 @@ async function getVideoDuration(file) {
       true // isMainPage flag
     );
 
-    // 5. Audio stoppen
+    // 5. Outro aufnehmen
+    outroVideo = await recordPage(
+      CFG.OUTRO_URL,
+      path.join(CFG.OUT_DIR, `outro_${timestamp}.mp4`),
+      CFG.OUTRO_DURATION
+    );
+
+    // 6. Audio stoppen
     audioProcess.kill('SIGINT');
     await audioResult.promise;
 
-    // 6. Videos zusammenfügen
-    await mergeVideos([introVideo, mainVideo], audioResult.outputPath, finalVideo);
+    // 7. Videos zusammenfügen
+    await mergeVideos([introVideo, mainVideo, outroVideo], audioResult.outputPath, finalVideo);
 
     log(`
 ✅ Aufnahme erfolgreich!
 📂 Ausgabedatei: ${finalVideo}
-⏳ Dauer: ${await getVideoDuration(finalVideo)}s
+⏳ Dauer: ${await getVideoDuration(finalVideo)}
     `);
 
   } catch (err) {
@@ -238,7 +247,7 @@ async function getVideoDuration(file) {
   } finally {
     // Aufräumen
     if (audioProcess) audioProcess.kill();
-    [introVideo, mainVideo].forEach(file => {
+    [introVideo, mainVideo, outroVideo].forEach(file => {
       if (file && fs.existsSync(file)) fs.unlinkSync(file);
     });
   }

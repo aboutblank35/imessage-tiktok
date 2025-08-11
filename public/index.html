@@ -2,41 +2,34 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>XOXO GOSSIP AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>🔥 XOXO GOSSIP AI</title>
   <link rel="stylesheet" href="style.css">
+
+  <!-- TikTok-optimiertes Aspect Ratio -->
   <style>
-    /* TRANSITION STYLES */
-    body {
-      opacity: 0;
-      transition: opacity 1s ease-in-out;
-    }
-    
     .phone {
-      transition: transform 1s ease-in-out, filter 1.5s ease-out;
-    }
-    
-    .transition-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
       width: 100%;
-      height: 100%;
-      background: #000;
-      z-index: 9999;
-      opacity: 1;
-      pointer-events: none;
-      transition: opacity 1s ease-in-out;
+      height: 100vh;
+      max-width: 375px;
+      max-height: 667px;
+      border-radius: 0;
+    }
+    @media (min-aspect-ratio: 9/16) {
+      .phone {
+        height: 100vh;
+        max-width: calc(100vh * 9 / 16);
+        max-height: 100vh;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="transition-overlay"></div>
   <div class="phone">
-    <!-- Statusleiste -->
+    <!-- Statusleiste mit dynamischer Uhr -->
     <div class="status-bar">
-      <div>17:42</div>
-      <div>📶 🔋</div>
+      <div id="time" class="live-time">--:--</div>
+      <div>📶 <span id="battery">8</span></div>
     </div>
 
     <!-- Header -->
@@ -49,45 +42,20 @@
       <div class="call-btn">📹</div>
     </div>
 
-    <!-- Chat -->
+    <!-- Chat-Container -->
     <div class="chat-container">
-      <div class="chat" id="chat">
-        <!-- Nachrichten werden hier eingefügt -->
-      </div>
+      <div id="chat" class="chat"></div>
     </div>
 
     <!-- Input-Bereich -->
     <div class="input-area">
       <div class="input-wrapper">
-        <div class="attachment-btn">＋</div>
         <input type="text" placeholder="iMessage" disabled>
-        <div class="camera-btn">📷</div>
+        <div class="emoji-btn">😊</div>
       </div>
     </div>
   </div>
 
   <script src="script.js"></script>
-  <script>
-    // Einblend-Effekt beim Laden
-    window.addEventListener('DOMContentLoaded', () => {
-      document.body.style.opacity = '1';
-      setTimeout(() => {
-        document.querySelector('.transition-overlay').style.opacity = '0';
-      }, 100);
-      
-      // Fake-Nachrichten für Demo
-      setTimeout(() => {
-        const chat = document.getElementById('chat');
-        chat.innerHTML += `
-          <div class="message left">
-            <div class="sender-name">BLAZE🔥</div>
-            <div class="message-content">
-              <div class="bubble">Girl... spill the tea ☕️</div>
-            </div>
-          </div>
-        `;
-      }, 500);
-    });
-  </script>
 </body>
 </html>
