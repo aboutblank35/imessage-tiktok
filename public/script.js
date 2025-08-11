@@ -281,6 +281,7 @@ async function initChat() {
     document.body.classList.add(`theme-${theme}`);
 
     await playChat(data.conversation);
+    window.__IM_DONE__ = true;
   } catch (error) {
     console.error("Fehler beim Laden des Chats:", error);
     createMessage("System", "⚠️ Chat konnte nicht geladen werden");
@@ -288,3 +289,10 @@ async function initChat() {
 }
 
 document.addEventListener('DOMContentLoaded', initChat);
+setInterval(() => {
+  const el = document.getElementById("time");
+  if (el) {
+    const d = new Date();
+    el.textContent = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+}, 1000);

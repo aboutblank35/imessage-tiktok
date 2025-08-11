@@ -5,34 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>🔥 XOXO GOSSIP AI</title>
   <link rel="stylesheet" href="style.css">
-
-  <!-- TikTok-optimiertes Aspect Ratio -->
-  <style>
-    .phone {
-      width: 100%;
-      height: 100vh;
-      max-width: 375px;
-      max-height: 667px;
-      border-radius: 0;
-    }
-    @media (min-aspect-ratio: 9/16) {
-      .phone {
-        height: 100vh;
-        max-width: calc(100vh * 9 / 16);
-        max-height: 100vh;
-      }
-    }
-  </style>
 </head>
 <body>
   <div class="phone">
-    <!-- Statusleiste mit dynamischer Uhr -->
     <div class="status-bar">
-      <div id="time" class="live-time">--:--</div>
-      <div>📶 <span id="battery">8</span></div>
+      <div id="time">17:42</div>
+      <div>📶 🔋</div>
     </div>
-
-    <!-- Header -->
     <div class="header">
       <div class="back-btn">‹</div>
       <div class="header-center">
@@ -41,13 +20,9 @@
       </div>
       <div class="call-btn">📹</div>
     </div>
-
-    <!-- Chat-Container -->
     <div class="chat-container">
       <div id="chat" class="chat"></div>
     </div>
-
-    <!-- Input-Bereich -->
     <div class="input-area">
       <div class="input-wrapper">
         <input type="text" placeholder="iMessage" disabled>
@@ -55,7 +30,6 @@
       </div>
     </div>
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>
