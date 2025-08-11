@@ -46,14 +46,16 @@ body.theme-debate {
 
 /* ===== PHONE MOCKUP ===== */
 .phone {
-  width: 375px;
-  height: 667px;
-  background: var(--bg-color);
+  width: 360px;
+  height: 640px;
+  background: #000;
   border-radius: 40px;
   overflow: hidden;
+  position: relative;
+  box-shadow: 0 0 0 6px #1e1e1e;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 0 6px #333;
+  transition: transform 1s ease-in-out, filter 1.5s ease-out;
 }
 
 /* ===== STATUS BAR ===== */
