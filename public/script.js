@@ -101,8 +101,17 @@
       const response = await fetch(CFG.DATA_URL);
       const {conversation} = await response.json();
       await playChat(conversation);
+      window.__IM_DONE__ = true;
     } catch (e) {
       console.error('Fehler:', e);
     }
   })();
+
+  setInterval(() => {
+    const el = document.getElementById("time");
+    if (el) {
+      const d = new Date();
+      el.textContent = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+  }, 1000);
 })();

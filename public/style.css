@@ -19,8 +19,8 @@ body {
 
 /* ===== PHONE-CONTAINER ===== */
 .phone {
-  width: 375px;
-  height: 667px;
+  width: 360px;
+  height: 640px;
   background: #000;
   border-radius: 40px;
   overflow: hidden;

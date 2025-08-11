@@ -8,10 +8,12 @@ const { PuppeteerScreenRecorder } = require('puppeteer-screen-recorder');
 const CFG = {
   INTRO_URL: 'http://localhost:53694/intro.html',
   MAIN_URL: 'http://localhost:53694/index.html',
+  OUTRO_URL: 'http://localhost:53694/outro.html',
   OUT_DIR: path.join(__dirname, 'data'),
   FPS: 60,
-  VIEWPORT: { width: 375, height: 667, deviceScaleFactor: 2 },
-  INTRO_DURATION: 2500,
+  VIEWPORT: { width: 360, height: 640, deviceScaleFactor: 2 },
+  INTRO_DURATION: 3400,
+  OUTRO_DURATION: 5200,
   MIN_DURATION: 10000,
   MAX_DURATION: 300000,
   INACTIVITY_DELAY: 5000,
@@ -35,7 +37,17 @@ async function ensureDirectory(dir) {
 }
 
 async function recordPage(url, outputPath, duration, isMainPage = false) {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-background-timer-throttling",
+      "--disable-renderer-backgrounding",
+      "--autoplay-policy=no-user-gesture-required"
+    ]
+  });
   const page = await browser.newPage();
   await page.setViewport(CFG.VIEWPORT);
 
@@ -92,6 +104,9 @@ async function recordPage(url, outputPath, duration, isMainPage = false) {
         lastActivity = currentTime;
         log(`💬 Aktivität: ${messageCount} Nachrichten` + (isTyping ? " (Typing...)" : ""));
       }
+
+      const done = await page.evaluate(() => !!window.__IM_DONE__);
+      if (done) break;
 
       // Beendigungskriterien
       if (duration >= CFG.MAX_DURATION) {
@@ -191,40 +206,40 @@ async function getVideoDuration(file) {
 }
 
 (async () => {
-  let introVideo, mainVideo, finalVideo;
+  let introVideo, mainVideo, outroVideo, finalVideo;
   let audioProcess;
 
   try {
-    // 1. Verzeichnis sicherstellen
     await ensureDirectory(CFG.OUT_DIR);
     const timestamp = Date.now();
     finalVideo = path.join(CFG.OUT_DIR, `final_${timestamp}.mp4`);
 
-    // 2. Audio-Aufnahme starten
     const audioResult = await recordAudio(path.join(CFG.OUT_DIR, `audio_${timestamp}.m4a`));
     audioProcess = audioResult.process;
 
-    // 3. Intro aufnehmen
     introVideo = await recordPage(
       CFG.INTRO_URL,
       path.join(CFG.OUT_DIR, `intro_${timestamp}.mp4`),
       CFG.INTRO_DURATION
     );
 
-    // 4. Hauptchat aufnehmen
     mainVideo = await recordPage(
       CFG.MAIN_URL,
       path.join(CFG.OUT_DIR, `main_${timestamp}.mp4`),
-      0, // Dauer wird intern berechnet
-      true // isMainPage flag
+      0,
+      true
     );
 
-    // 5. Audio stoppen
+    outroVideo = await recordPage(
+      CFG.OUTRO_URL,
+      path.join(CFG.OUT_DIR, `outro_${timestamp}.mp4`),
+      CFG.OUTRO_DURATION
+    );
+
     audioProcess.kill('SIGINT');
     await audioResult.promise;
 
-    // 6. Videos zusammenfügen
-    await mergeVideos([introVideo, mainVideo], audioResult.outputPath, finalVideo);
+    await mergeVideos([introVideo, mainVideo, outroVideo], audioResult.outputPath, finalVideo);
 
     log(`
 ✅ Aufnahme erfolgreich!
@@ -236,9 +251,8 @@ async function getVideoDuration(file) {
     error(`Hauptprozess fehlgeschlagen: ${err.message}`);
     process.exit(1);
   } finally {
-    // Aufräumen
     if (audioProcess) audioProcess.kill();
-    [introVideo, mainVideo].forEach(file => {
+    [introVideo, mainVideo, outroVideo].forEach(file => {
       if (file && fs.existsSync(file)) fs.unlinkSync(file);
     });
   }
