@@ -1,50 +1,48 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>iMessage Gruppenchat</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>XOXO GOSSIP AI — Main (1080×1920)</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-  <div class="chat-container">
-
-    <!-- Status-Bar -->
-    <div class="status-bar">
-      <div class="status-left">17:41</div>
-      <div class="status-right">
-        <span class="icon signal">📶</span>
-        <span class="icon wifi">📡</span>
-        <span class="icon battery">🔋</span>
+<body class="theme-gossip ui-lg">
+  <div class="stage">
+    <div class="phone">
+      <div class="status-bar">
+        <div id="time">13:06</div>
+        <div>📶 🔋</div>
       </div>
-    </div>
 
-    <!-- Header -->
-    <div class="header">
-      <div class="h-left">
-        <span class="icon back">‹</span>
-        <span class="icon unread">1</span>
+      <div class="header">
+        <div class="back-btn">‹</div>
+        <div class="header-center">
+          <div class="group-title">6 AI Advisors</div>
+          <div class="group-subtitle">XOXO GOSSIP AI</div>
+        </div>
+        <div class="call-btn">📹</div>
       </div>
-      <div class="h-center">
-        <div id="avatars" class="avatars"></div>
-        <div id="group-title" class="group-title"></div>
-      </div>
-      <div class="h-right">
-        <span class="icon video">📹</span>
-        <span class="icon info">ℹ️</span>
-      </div>
-    </div>
 
-    <!-- Chat -->
-    <div class="chat" id="chat"></div>
+      <div class="chat-container">
+        <div id="chat" class="chat"></div>
+      </div>
 
-    <!-- Input -->
-    <div class="input-bar">
-      <span class="icon plus">＋</span>
-      <input type="text" placeholder="iMessage">
-      <span class="icon mic">🎤</span>
+      <div class="input-area">
+        <div class="input-wrapper">
+          <input type="text" placeholder="AiMessage" disabled />
+          <div class="emoji-btn">😊</div>
+        </div>
+      </div>
     </div>
   </div>
+
+  <script>
+    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
+    setInterval(() => {
+      const el = document.getElementById('time');
+      if (el) { const d = new Date(); el.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+    }, 1000);
+  </script>
   <script src="script.js"></script>
 </body>
 </html>

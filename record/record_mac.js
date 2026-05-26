@@ -1,208 +1,326 @@
+// record/record_mac.js
+/* eslint-disable no-console */
 const fs = require('fs-extra');
 const path = require('path');
+const http = require('http');
+const https = require('https');
+const { spawn } = require('child_process');
 const puppeteer = require('puppeteer');
-const { execSync, spawn } = require('child_process');
-const { PuppeteerScreenRecorder } = require('puppeteer-screen-recorder');
 
-// Konfiguration
+const HOST = '127.0.0.1';
+const PORT = 53694;
+
+const W = 1080;                 // feste Breite
+const H = 1920;                 // feste Höhe
+const FPS = 60;                 // Ziel-Framerate
+
 const CFG = {
-  URL: 'http://localhost:3000',
-  OUT_DIR: 'data',
-  FPS: 60,
-  VIEWPORT: { width: 360, height: 640, scale: 2 },
-  INACTIVITY_DELAY: 5000,
-  MIN_DURATION: 10000,
-  MAX_DURATION: 300000,
-  AUDIO_DEVICES: [
-    "BlackHole 2ch",
-    "MacBook Pro-Mikrofon",
-    ":0"
-  ]
+  INTRO_URL: `http://${HOST}:${PORT}/intro.html`,
+  MAIN_URL:  `http://${HOST}:${PORT}/index.html`,
+  OUTRO_URL: `http://${HOST}:${PORT}/outro.html`,
+
+  // Zeiten (ms) – nur Intro/Outro werden gewartet
+  INTRO_MS: 3200,
+  OUTRO_MS: 4800,
+
+  // Haupt-Sequenz: frühestens nach 8s aussteigen, wenn seit 2.5s nichts passierte
+  MIN_MAIN_MS: 8000,
+  IDLE_MS: 5000,
+  MAX_MAIN_MS: 300000,
+
+  OUT_DIR: path.join(__dirname, 'data'),
+  OUT_FILE: () => path.join(__dirname, 'data', `final_${Date.now()}.mp4`),
+
+  USER_DATA_DIR: path.join(__dirname, '.chromecache_headless'), // persistenter Cache (SW, Fonts, etc.)
 };
 
-// Hilfsfunktionen
-const log = (msg) => console.log(`[${new Date().toISOString()}] ${msg}`);
-const error = (msg) => console.error(`[${new Date().toISOString()}] ❌ ${msg}`);
+// -------------------------------------------------------------
 
-async function getAudioDevices() {
-  try {
-    return execSync('ffmpeg -f avfoundation -list_devices true -i "" 2>&1 || true', { 
-      encoding: 'utf-8',
-      stdio: 'pipe'
-    });
-  } catch (err) {
-    return err.stderr || err.stdout || '';
-  }
+const log   = (m) => console.log(`[${new Date().toISOString()}] ${m}`);
+const error = (m) => console.error(`[${new Date().toISOString()}] ❌ ${m}`);
+
+async function ensureDir(d){ await fs.ensureDir(d); }
+
+async function waitForServer(url, timeoutMs=90000, interval=300){
+  const start = Date.now(); const u = new URL(url);
+  const lib = u.protocol === 'https:' ? https : http;
+  return new Promise((resolve, reject)=>{
+    const tick = ()=>{
+      const req = lib.request({ method:'GET', hostname:u.hostname, port:u.port, path:u.pathname, timeout:2000 }, res=>{
+        res.resume();
+        if (res.statusCode >= 200 && res.statusCode < 500) return resolve();
+        if (Date.now()-start > timeoutMs) return reject(new Error(`Server status ${res.statusCode}`));
+        setTimeout(tick, interval);
+      });
+      req.on('error', ()=>{
+        if (Date.now()-start > timeoutMs) return reject(new Error('Server not reachable'));
+        setTimeout(tick, interval);
+      });
+      req.end();
+    };
+    tick();
+  });
 }
 
-async function findWorkingAudioDevice() {
-  const devicesOutput = await getAudioDevices();
-  log('Verfügbare Audio-Devices:\n' + devicesOutput);
-
-  for (const device of CFG.AUDIO_DEVICES) {
-    if (devicesOutput.includes(device)) {
-      const deviceStr = device.startsWith(':') ? device : `:${device}`;
-      log(`✅ Verwende Audio-Device: ${deviceStr}`);
-      return deviceStr;
-    }
-  }
-  
-  error('Kein funktionierendes Audio-Device gefunden!');
-  process.exit(1);
+function rmSingletonLock(dir){
+  try {
+    const p = path.join(dir, 'SingletonLock');
+    if (fs.existsSync(p)) fs.removeSync(p);
+  } catch {}
 }
 
-async function getVideoDuration(file) {
-  try {
-    const cmd = `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${file}"`;
-    return parseFloat(execSync(cmd).toString()).toFixed(1);
-  } catch {
-    return 'unbekannt';
-  }
-}
-
-(async () => {
-  let browser;
-  let audioProcess;
-  let tempVideo, tempAudio, finalOutput;
-
-  try {
-    // 1. Audio-Device finden
-    const audioDevice = await findWorkingAudioDevice();
-    await fs.ensureDir(CFG.OUT_DIR);
-    const timestamp = Date.now();
-    tempVideo = path.join(CFG.OUT_DIR, `temp_${timestamp}.mp4`);
-    tempAudio = path.join(CFG.OUT_DIR, `temp_${timestamp}.m4a`);
-    finalOutput = path.join(CFG.OUT_DIR, `final_${timestamp}.mp4`);
-
-    // 2. Audio-Aufnahme starten (mit zusätzlichem Monitoring)
-    log(`🔊 Starte Audio-Aufnahme mit ${audioDevice}...`);
-    audioProcess = spawn('ffmpeg', [
-      '-f', 'avfoundation',
-      '-i', audioDevice,
-      '-c:a', 'aac',
-      '-y', tempAudio
-    ], { stdio: 'pipe', shell: true });
-
-    // Audio-Prozess-Überwachung
-    audioProcess.stderr.on('data', (data) => {
-      const output = data.toString();
-      if (output.includes('Input/output error')) {
-        error('FFmpeg Audio-Fehler: Device nicht erreichbar');
-      }
-    });
-
-    // 3. Browser starten
-    log('🚀 Starte Browser...');
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--autoplay-policy=no-user-gesture-required',
-        '--disable-gpu'
-      ],
-      timeout: 30000
-    });
-
-    const page = await browser.newPage();
-    await page.setViewport(CFG.VIEWPORT);
-
-    // 4. Seite laden
-    log(`🌐 Lade ${CFG.URL}...`);
-    await page.goto(CFG.URL, { 
-      waitUntil: 'networkidle2',
-      timeout: 30000
-    });
-
-    // 5. Warte auf initiale Nachrichten
-    log('👀 Warte auf erste Nachricht...');
-    await page.waitForSelector('.message', { timeout: 10000 });
-    let messageCount = await page.evaluate(() => document.querySelectorAll('.message').length);
-    log(`📜 Initiale Nachrichten gefunden: ${messageCount}`);
-
-    // 6. Video-Recorder starten
-    log('🎥 Starte Videoaufnahme...');
-    const recorder = new PuppeteerScreenRecorder(page, {
-      fps: CFG.FPS,
-      videoFormat: 'mp4',
-      videoCodec: 'libx264',
-      videoBitrate: 8000,
-      videoFrame: {
-        width: CFG.VIEWPORT.width * CFG.VIEWPORT.scale,
-        height: CFG.VIEWPORT.height * CFG.VIEWPORT.scale
-      }
-    });
-    await recorder.start(tempVideo);
-    const startTime = Date.now();
-    let lastMsgTime = Date.now();
-
-    // 7. Nachrichtenüberwachung
-    log('⏱️ Überwache Chat-Aktivität...');
-    while (true) {
-      const currentTime = Date.now();
-      const activeDuration = currentTime - startTime;
-      const inactiveDuration = currentTime - lastMsgTime;
-
-      // Neue Nachrichten prüfen
-      const newCount = await page.evaluate(() => document.querySelectorAll('.message').length);
-      if (newCount > messageCount) {
-        messageCount = newCount;
-        lastMsgTime = currentTime;
-        log(`📩 Neue Nachricht erkannt (${messageCount} total)`);
-      }
-
-      // Beendigungskriterien
-      if (activeDuration >= CFG.MAX_DURATION) {
-        log(`🕒 Maximale Dauer erreicht (${CFG.MAX_DURATION/1000}s)`);
-        break;
-      } else if (activeDuration >= CFG.MIN_DURATION && inactiveDuration >= CFG.INACTIVITY_DELAY) {
-        log(`💤 Inaktivität erkannt (${CFG.INACTIVITY_DELAY/1000}s ohne Änderung)`);
-        break;
-      }
-
-      await new Promise(r => setTimeout(r, 1000));
-    }
-
-    // 8. Aufnahme stoppen
-    log('🛑 Beende Aufnahmen...');
-    await recorder.stop();
-    audioProcess.kill('SIGINT');
-    await browser.close();
-
-    // 9. Überprüfen ob Audio-Datei existiert
-    const audioExists = fs.existsSync(tempAudio) && fs.statSync(tempAudio).size > 0;
-    
-    if (audioExists) {
-      log('🔗 Kombiniere Medien...');
-      try {
-        execSync(
-          `ffmpeg -i ${tempVideo} -i ${tempAudio} ` +
-          `-c:v copy -c:a aac -map 0:v -map 1:a ` +
-          `-shortest -y ${finalOutput}`,
-          { stdio: 'ignore' }
-        );
-        log(`✅ Finale Datei: ${finalOutput}`);
-      } catch (mergeErr) {
-        error(`Fehler beim Merging: ${mergeErr.message}`);
-        fs.copyFileSync(tempVideo, finalOutput);
-        log(`⚠️ Nur Video gespeichert: ${finalOutput}`);
-      }
-    } else {
-      error('❌ Audio-Aufnahme fehlgeschlagen - nur Video wird gespeichert');
-      fs.copyFileSync(tempVideo, finalOutput);
-      log(`⚠️ Nur Video gespeichert: ${finalOutput}`);
-    }
-
-    log(`⏳ Dauer: ${await getVideoDuration(finalOutput)}s`);
-    log(`📁 Größe: ${(fs.statSync(finalOutput).size / (1024 * 1024)).toFixed(2)}MB`);
-
-  } catch (err) {
-    error(`Hauptprozess fehlgeschlagen: ${err.message}`);
-  } finally {
-    // Aufräumen
+async function gotoSafe(page, url, label){
+  for (const wu of ['domcontentloaded','load']) {
     try {
-      if (fs.existsSync(tempVideo)) fs.unlinkSync(tempVideo);
-      if (fs.existsSync(tempAudio)) fs.unlinkSync(tempAudio);
-    } catch (cleanupErr) {
-      error(`Bereinigung fehlgeschlagen: ${cleanupErr.message}`);
+      log(`➡️  goto(${label}) → ${wu}`);
+      await page.goto(url, { waitUntil: wu, timeout: 120000 });
+      return;
+    } catch (e) {
+      log(`⚠️ goto ${label} (${wu}) failed: ${e.message}`);
     }
+  }
+  // Fallback ohne Timeout
+  log(`➡️  goto(${label}) fallback → load (no-timeout)`);
+  try { await page.goto(url, { waitUntil: 'load', timeout: 0 }); } catch {}
+}
+
+async function lockViewport1080x1920(page) {
+  const client = await page.target().createCDPSession();
+
+  // 1) sichtbare Größe (sehr wichtig für Screencast)
+  await client.send('Emulation.setVisibleSize', { width: W, height: H });
+
+  // 2) Device Metrics + Portrait
+  await client.send('Emulation.setDeviceMetricsOverride', {
+    width: W, height: H, deviceScaleFactor: 1, mobile: false,
+    screenWidth: W, screenHeight: H,
+    screenOrientation: { type: 'portraitPrimary', angle: 0 }
+  });
+
+  // 3) Puppeteer-Viewport (Kosmetik/Fonts)
+  await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
+
+  // 4) Page Scale = 1
+  await client.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
+
+  // 5) Scroll an den Start (falls alter State)
+  await page.evaluate(() => { window.scrollTo(0, 0); });
+}
+
+async function prewarm(page) {
+  log('🧊 Pre-Warm: Intro → Main → Outro …');
+  await gotoSafe(page, CFG.INTRO_URL, 'pre:intro');
+  await page.waitForTimeout(CFG.INTRO_MS);
+
+  await gotoSafe(page, CFG.MAIN_URL, 'pre:main');
+  await waitMain(page, 'pre');
+
+  await gotoSafe(page, CFG.OUTRO_URL, 'pre:outro');
+  await page.waitForTimeout(CFG.OUTRO_MS);
+}
+
+async function waitMain(page, phase='record') {
+  const t0 = Date.now();
+  let last = t0;
+  let count = 0;
+
+  // auf erstes Render/Message warten (max 30s)
+  const tStart = Date.now();
+  while (Date.now() - tStart < 30000) {
+    const n = await page.$$eval('.message', els => els.length).catch(()=>0);
+    if (n > 0) { count = n; break; }
+    await page.waitForTimeout(100);
+  }
+
+  // laufen lassen, bis done/idle/min/max
+  while (true) {
+    const now = Date.now();
+    const done = await page.evaluate(()=> !!window.__IM_DONE__).catch(()=>false);
+    const n = await page.$$eval('.message', els => els.length).catch(()=>count);
+
+    if (n > count) { count = n; last = now; }
+
+    if (done) break;
+    if (now - t0 > CFG.MAX_MAIN_MS) break;
+    if ((now - t0) > CFG.MIN_MAIN_MS && (now - last) > CFG.IDLE_MS) break;
+
+    await page.waitForTimeout(120);
+  }
+}
+
+// ---- ffmpeg: image2pipe (mjpeg) → h264 ------------------------------------
+
+function startFFmpegPipe(outFile) {
+  const args = [
+    '-y',
+    '-f', 'image2pipe',
+    '-vcodec', 'mjpeg',           // wir schicken JPEGs
+    '-framerate', String(FPS),    // konstante Eingabe-Framerate
+    '-i', 'pipe:0',
+    '-vf', `fps=${FPS},format=yuv420p`, // sichert CFR + H.264-Kompatibilität
+    '-c:v', 'libx264',
+    '-preset', 'veryfast',
+    '-profile:v', 'high',
+    '-level', '4.1',
+    '-pix_fmt', 'yuv420p',
+    '-movflags', '+faststart',
+    outFile
+  ];
+  log(`🎬 ffmpeg ${args.join(' ')}`);
+  const ff = spawn('ffmpeg', args, { stdio: ['pipe', 'inherit', 'inherit'] });
+  ff.on('error', (e)=> error(`ffmpeg error: ${e.message}`));
+  return ff;
+}
+
+// ---- Realtime Screencast Steuerung ------------------------------------------
+// CDP Screencast emits frames mainly when pixels change. Static intro/outro
+// holds then collapse to a few frames because ffmpeg receives too little input.
+// Keep the cheap CDP source, but write the latest frame on a wall-clock timer so
+// static holds and bubble dwell time survive in the final MP4.
+async function startRealtimeScreencast(page, ff) {
+  const client = await page.target().createCDPSession();
+  let stopped = false;
+  let lastFrame = null;
+  const start = Date.now();
+  let written = 0;
+  let firstOk = false;
+
+  const writeFrame = (buf) => {
+    if (!buf || !ff?.stdin?.writable) return false;
+    try {
+      ff.stdin.write(buf);
+      written += 1;
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  client.on('Page.screencastFrame', async ({ data, metadata, sessionId }) => {
+    try {
+      const vr = metadata && metadata['visibleRect'];
+      if (!firstOk && vr) {
+        const ok = Math.round(vr.width) === W && Math.round(vr.height) === H;
+        if (!ok) {
+          log(`⚠️ visibleRect ist ${vr.width}×${vr.height}, stelle erneut ein …`);
+          await lockViewport1080x1920(page);
+        } else {
+          firstOk = true;
+        }
+      }
+      lastFrame = Buffer.from(data, 'base64');
+      await client.send('Page.screencastFrameAck', { sessionId });
+    } catch {}
+  });
+
+  await client.send('Page.startScreencast', {
+    format: 'jpeg',
+    quality: 90,
+    maxWidth: W,
+    maxHeight: H,
+    everyNthFrame: 1
+  });
+
+  const timer = setInterval(() => {
+    if (stopped || !lastFrame) return;
+    const target = Math.floor(((Date.now() - start) / 1000) * FPS);
+    while (written < target && ff?.stdin?.writable) {
+      if (!writeFrame(lastFrame)) break;
+    }
+  }, Math.max(4, Math.floor(1000 / FPS / 2)));
+
+  return {
+    stop: async () => {
+      stopped = true;
+      clearInterval(timer);
+      try {
+        await client.send('Page.stopScreencast');
+      } catch {}
+      const target = Math.floor(((Date.now() - start) / 1000) * FPS);
+      while (written < target && lastFrame && ff?.stdin?.writable) {
+        if (!writeFrame(lastFrame)) break;
+      }
+      log(`🧾 Realtime screencast wrote ${written} frames`);
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+
+(async ()=>{
+  try {
+    await ensureDir(CFG.OUT_DIR);
+    await waitForServer(CFG.MAIN_URL);
+
+    rmSingletonLock(CFG.USER_DATA_DIR);
+
+    // System-Chrome (arm64) bevorzugen
+    let launchOptions = {
+      headless: 'new',
+      userDataDir: CFG.USER_DATA_DIR,
+      defaultViewport: null,
+      ignoreDefaultArgs: ['--enable-automation'],
+      args: [
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--autoplay-policy=no-user-gesture-required',
+        '--force-color-profile=srgb'
+      ]
+    };
+
+    // Versuche Chrome-Kanal, sonst Puppeteer Chromium
+    let browser;
+    try {
+      log('🧭 Nutze System-Chrome (falls verfügbar) …');
+      browser = await puppeteer.launch({ ...launchOptions, channel: 'chrome' });
+    } catch {
+      log('⚠️ Chrome-Kanal nicht verfügbar, nutze bundled Chromium …');
+      browser = await puppeteer.launch(launchOptions);
+    }
+
+    const page = (await browser.pages())[0] || await browser.newPage();
+
+    // webdriver-Flag verstecken (kosmetisch)
+    try {
+      await page.evaluateOnNewDocument(() =>
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined })
+      );
+    } catch {}
+
+    // Fester Headless-Viewport (vor JEDEM goto!)
+    await lockViewport1080x1920(page);
+
+    // ---------- PASS 1: PREWARM (Cache & SW laden) ----------
+    await prewarm(page);
+
+    // ---------- PASS 2: RECORD (Screencast → ffmpeg) ----------
+    log('🎥 Record via realtime CDP screencast (wall-clock→ffmpeg)…');
+    await lockViewport1080x1920(page); // sicherheitshalber nochmal
+
+    const outFile = CFG.OUT_FILE();
+    const ff = startFFmpegPipe(outFile);
+    const sc = await startRealtimeScreencast(page, ff);
+
+    // Sequenz fahren
+    await gotoSafe(page, CFG.INTRO_URL, 'rec:intro');
+    await page.waitForTimeout(CFG.INTRO_MS);
+
+    await gotoSafe(page, CFG.MAIN_URL, 'rec:main');
+    await waitMain(page, 'rec');
+
+    await gotoSafe(page, CFG.OUTRO_URL, 'rec:outro');
+    await page.waitForTimeout(CFG.OUTRO_MS);
+
+    // Screencast + ffmpeg sauber beenden
+    await sc.stop();
+    try { ff.stdin.end(); } catch {}
+    await new Promise(res => setTimeout(res, 200)); // kleines Flush
+    try { ff.kill('SIGINT'); } catch {}
+
+    await browser.close();
+    log(`✅ Fertig: ${outFile}`);
+  } catch (e) {
+    error(e.stack || e.message);
+    process.exit(1);
   }
 })();
