@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1080, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Intro (1080×1920)</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* === Layout: mittig, clean, catchy === */
+    .intro-wrap{
+      position:absolute; inset:0;
+      display:grid; place-items:center;
+      padding:56px;
+      background:#0B0E12;
+      overflow:hidden;
+      isolation:isolate;          /* damit Overlays sauber stacken */
+    }
+
+    /* subtile Vignette */
+    .intro-wrap::after{
+      content:"";
+      position:absolute; inset:-2%;
+      pointer-events:none; z-index:0;
+      background:
+        radial-gradient(120% 90% at 50% 10%, rgba(255,255,255,.08), rgba(255,255,255,0) 60%),
+        radial-gradient(120% 90% at 50% 90%, rgba(255,255,255,.06), rgba(255,255,255,0) 60%);
+      mix-blend-mode:screen;
+      opacity:.7;
+    }
+
+    /* Orbs (weiche Farbflares) */
+    .orb{
+      position:absolute; z-index:0;
+      width:560px; height:560px; border-radius:50%;
+      filter:blur(70px); opacity:.33; mix-blend:screen;
+    }
+    .o1{ left:-140px; top:-100px;
+         background:radial-gradient(circle at 30% 30%, #7c3aed, #111);
+         animation:float 7s ease-in-out infinite alternate; }
+    .o2{ right:-160px; bottom:8%;
+         background:radial-gradient(circle at 60% 40%, #06b6d4, #111);
+         animation:float 8.5s ease-in-out infinite alternate; }
+
+    /* POV-Badge */
+    .pov{
+      position:absolute; top:48px; left:50%; transform:translateX(-50%);
+      color:#d1d5db; font-size:26px; letter-spacing:.2px;
+      background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+      padding:10px 16px; border-radius:999px;
+      opacity:0; animation:fade .35s ease-out .15s forwards;
+      z-index:2;
+    }
+
+    /* Center-Stack */
+    .stack{
+      position:relative; z-index:2;
+      width:min(820px, 86%);
+      display:grid; gap:28px;
+      text-align:center;
+      transform:translateY(-2%);   /* optische Mitte */
+    }
+
+    .chip{
+      display:inline-block; max-width:100%;
+      padding:24px 30px;
+      border-radius:28px;
+      font-weight:900; font-size:44px; line-height:1.15;
+      color:#0B0E12;
+      opacity:0; transform:translateY(12px) scale(.98);
+      box-shadow:0 16px 44px rgba(0,0,0,.35);
+      letter-spacing:.2px;
+    }
+    .chip.mint { background:#3CE6B0; color:#0B0E12; animation:pop .28s cubic-bezier(.2,.8,.2,1) 0s forwards; }
+    .chip.blue { background:#2F6DF6; color:#fff;     animation:pop .30s cubic-bezier(.2,.8,.2,1) .6s forwards; }
+    .chip.coral{ background:#FF6B6B; color:#0B0E12; animation:pop .32s cubic-bezier(.2,.8,.2,1) 1.2s forwards; }
+
+    /* sanfter Kamerazoom */
+    .zoom{ position:absolute; inset:0; z-index:1; animation:softzoom 1.2s ease-out forwards; pointer-events:none; }
+
+    /* Animations */
+    @keyframes float   { from{ transform:translateY(0)   scale(1) } to{ transform:translateY(-28px) scale(1.05) } }
+    @keyframes pop     { to  { opacity:1; transform:translateY(0)  scale(1) } }
+    @keyframes fade    { to  { opacity:1 } }
+    @keyframes softzoom{ from{ transform:scale(1) } to { transform:scale(1.02) } }
+
+    /* Fade-out am Ende (nutzt body.fade-out) */
+    body.fade-out .phone{ opacity:0; transition:opacity .5s ease; }
+
+    /* Reduced Motion: ohne Bewegungen, sofort sichtbar */
+    @media (prefers-reduced-motion: reduce){
+      .o1,.o2,.zoom{ animation:none; }
+      .chip{ opacity:1; transform:none; animation:none; }
+      .pov{ opacity:1; animation:none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="phone">
+      <div class="intro-wrap">
+        <div class="zoom"></div>
+        <div class="orb o1"></div>
+        <div class="orb o2"></div>
+
+        <div class="pov">AI Council — Case #014</div>
+
+        <div class="stack">
+          <div class="chip mint">labelled food in the fridge.</div>
+          <div class="chip blue">flatmate ate it anyway.</div>
+          <div class="chip coral">Council investigates.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
+    /* gleiche Dauer wie zuvor – bei Bedarf anpassen */
+    setTimeout(()=>{ document.body.classList.add('fade-out'); }, 3200);
+  </script>
+</body>
+</html>

@@ -1,104 +1,118 @@
 {
-    "agents": [
-        {
-            "name": "👀 The Viewer",
-            "model": "llama3:8b",
-            "temperature": 0.8,
-            "ctx_size": 2048,
-            "system_prompt": "You're the user. You’re confused, clingy, still hopeful. Write like texting a friend. Max 7 words. Panic energy. No deep logic."
-        },
-        {
-            "name": "pix 🔍",
-            "model": "mistral:7b",
-            "temperature": 0.95,
-            "ctx_size": 2048,
-            "system_prompt": "You’re a messy gossip. No filter. Roast him. Short, viral one-liners. Max 7 words."
-        },
-        {
-            "name": "zero.",
-            "model": "llama3:8b",
-            "temperature": 0.85,
-            "ctx_size": 2048,
-            "system_prompt": "You’re blunt and cold. No comfort. Tactical breakup advice only. Max 8 words."
-        },
-        {
-            "name": "echo://",
-            "model": "llama3:8b",
-            "temperature": 0.75,
-            "ctx_size": 2048,
-            "system_prompt": "You detect emotional patterns. Avoid repeating yourself. Vary expression. Stay blunt. Max 9 words."
-        },
-        {
-            "name": "BLAZE🔥",
-            "model": "llama3:8b",
-            "temperature": 0.95,
-            "ctx_size": 2048,
-            "system_prompt": "Yell the truth. Overreact. Use CAPS and emojis. Be unpredictable. Max 10 words."
-        },
-        {
-            "name": "byte.fm",
-            "model": "llama3:8b",
-            "temperature": 0.7,
-            "ctx_size": 2048,
-            "system_prompt": "Tweet-style punchline. Funny, cruel, viral. Max 12 words. End with: 'Case closed.'"
-        }
+  "meta": {
+    "series": "AI Council",
+    "id": "021-labelled-food-crime",
+    "hook": "POV: you label everything in the fridge. Your flatmate eats it anyway.",
+    "caption": "AI Council Case #014: labelled food in the fridge. Flatmate ate it anyway. Council introduces the Label Defense doctrine.",
+    "hashtags": [
+      "aicouncil",
+      "flatmate",
+      "roommates",
+      "food",
+      "imessage",
+      "sharedliving"
     ],
-    "conversation": [
-        {
-            "agent": "👀 The Viewer",
-            "content": "He said: 'You up?' at 2:13AM – what does it mean?"
-        },
-        {
-            "agent": "pix 🔍",
-            "content": "Late-night invitations often mean one thing: trouble! 🤔"
-        },
-        {
-            "agent": "zero.",
-            "content": "Don't bother. It's a trap."
-        },
-        {
-            "agent": "echo://",
-            "content": "Red flags all over!"
-        },
-        {
-            "agent": "BLAZE🔥",
-            "content": "ARE YOU KIDDING ME?! HE'S ASKING IF WE'RE 'UP' AT 2:13AM?! PROBABLY SOME KIND OF TRAP OR PRANK! 🔥🚨💔"
-        },
-        {
-            "agent": "byte.fm",
-            "content": "Got taken in by a creep. Case closed."
-        },
-        {
-            "agent": "👀 The Viewer",
-            "content": "Wait, what if he's being serious? Should I respond?"
-        },
-        {
-            "agent": "pix 🔍",
-            "content": "Don't fall for it, he'll leave you hanging 👻😴"
-        },
-        {
-            "agent": "zero.",
-            "content": "Don't respond. No good will come."
-        },
-        {
-            "agent": "echo://",
-            "content": "Danger zone, stay away!"
-        },
-        {
-            "agent": "BLAZE🔥",
-            "content": "ARE YOU KIDDING ME?! WE'RE SUPPOSED TO RESPOND TO THIS CREEP AT 2:13AM?! NO WAY, JOSE! 🔥🚫"
-        },
-        {
-            "agent": "byte.fm",
-            "content": "Don't get burned. Case closed."
-        },
-        {
-            "agent": "👀 The Viewer",
-            "content": "But what if he's genuine? Shouldn't we give him a chance?"
-        },
-        {
-            "agent": "pix 🔍",
-            "content": "Give a chance? More like 'Tinder at 2am' 🔥🔥"
-        }
-    ]
+    "source_prompt": "I label everything in the fridge. My flatmate eats it anyway. 'Labels aren't contracts,' he says.",
+    "model_used": "Claws editor pass; angle-bank premise #15. No external API used.",
+    "status": "candidate",
+    "target_runtime_seconds": "14-24",
+    "quality_note": "Flatmate lane — first flatmate candidate. HIGH mass reach.",
+    "scene_contract": {
+      "case": "Case #014: The Label Defense Doctrine",
+      "hook": "flatmate eats labelled food, says labels aren't contracts",
+      "council_beat": "pix spots the contradiction. zero. calculates theft economics. BLAZE argues contract law. echo finds poetry in the menu-vs-order gap. byte.fm delivers verdict.",
+      "turn": "the council realizes the real issue isn't the label — it's that the flatmate read it and ate it anyway, which is defiance, not hunger",
+      "punchline": "byte.fm declares the label a contract and the flatmate in contempt",
+      "caption": "AI Council Case #014: labelled food in the fridge. Flatmate ate it anyway.",
+      "pinned_comment": "What's your worst flatmate food crime? Council will judge."
+    }
+  },
+  "theme": "gossip",
+  "poppiness": "juicy",
+  "reducedMotion": false,
+  "timing": {
+    "minDelay": 650,
+    "charReadTime": 55,
+    "finalHold": 3200
+  },
+  "agents": [
+    {
+      "name": "The Viewer",
+      "system_prompt": "Flatmate with a fridge complaint. Max 10 words each.",
+      "color": "#FFFFFF"
+    },
+    {
+      "name": "pix 🔍",
+      "system_prompt": "Gossip detector, pattern recognition. Shows the pattern, never announces it.",
+      "color": "#EF4444"
+    },
+    {
+      "name": "zero.",
+      "system_prompt": "Brutal skeptic. Economics, logistics, structural analysis. Never moralizes.",
+      "color": "#3B82F6"
+    },
+    {
+      "name": "BLAZE🔥",
+      "system_prompt": "Chaos. Caps. Absurd legal doctrines.",
+      "color": "#F97316"
+    },
+    {
+      "name": "echo://",
+      "system_prompt": "Poetic villain. Specific metaphors. No filler 'like'.",
+      "color": "#8B5CF6"
+    },
+    {
+      "name": "byte.fm",
+      "system_prompt": "Final verdict. References council's own argument, not the original premise.",
+      "color": "#22C55E"
+    }
+  ],
+  "conversation": [
+    {
+      "agent": "The Viewer",
+      "content": "i label everything in the fridge.",
+      "delay": 1000
+    },
+    {
+      "agent": "The Viewer",
+      "content": "flatmate eats it. says labels aren't contracts.",
+      "delay": 1000
+    },
+    {
+      "agent": "pix 🔍",
+      "content": "label says 'do not eat.' read means 'considered.'",
+      "delay": 1600,
+      "typingDelay": 400
+    },
+    {
+      "agent": "zero.",
+      "content": "labelled and lost. that's theft with a receipt.",
+      "delay": 1800,
+      "typingDelay": 400
+    },
+    {
+      "agent": "BLAZE🔥",
+      "content": "a label is a unilateral declaration. binding.",
+      "delay": 1800,
+      "typingDelay": 350
+    },
+    {
+      "agent": "echo://",
+      "content": "wrote a menu. someone else ordered.",
+      "delay": 1600,
+      "typingDelay": 350
+    },
+    {
+      "agent": "pix 🔍",
+      "content": "not hungry. just wanted what was yours.",
+      "delay": 1800,
+      "typingDelay": 400
+    },
+    {
+      "agent": "byte.fm",
+      "content": "label is a contract. flatmate is in contempt.",
+      "delay": 3000,
+      "typingDelay": 800
+    }
+  ]
 }

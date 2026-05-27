@@ -14,6 +14,7 @@ pnpm-debug.log\*
 # Generated video files
 
 data/\*.mp4
+record/data/
 
 # Environment variables
 
@@ -41,6 +42,14 @@ Thumbs.db
 # Cache
 
 .cache/
+
+# Chromium headless cache (massive browser artifacts)
+
+record/.chromecache_headless/
+
+# Chat backup files
+
+public/data/backups/
 
 # Optional npm cache
 
