@@ -46,7 +46,15 @@
   const HIGHLIGHT_RE = new RegExp('(' + HIGHLIGHT_EMOJIS.map(e=>e.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|') + ')','u');
 
   // --- helpers
-  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+  const sleep = (ms)=>new Promise(r=>{
+    // Use requestAnimationFrame looping to avoid headless timer throttling
+    const start = performance.now();
+    function poll(){
+      if(performance.now() - start >= ms) { r(); return; }
+      requestAnimationFrame(poll);
+    }
+    requestAnimationFrame(poll);
+  });
   const $ = (s,r=document)=>r.querySelector(s);
   const hash = (s)=>[...(s||'')].reduce((a,c)=>((a<<5)-a)+c.charCodeAt(0)|0,0);
   const norm = (s='') => (s||'').toLowerCase().replace(/\p{Extended_Pictographic}/gu,'').replace(/[^a-z0-9\s]/gi,' ').replace(/\s+/g,' ').trim();
@@ -344,7 +352,7 @@
   function calculateMessageDelay(agent, content){
     let d = CFG.MIN_DELAY + Math.max(0,(content||'').length)*CFG.CHAR_READ_TIME;
     if (reactionIntensity(content||'') >= 2) d *= 1.25;
-    return d;
+    return Math.round(d);
   }
 
   // --- conversation
@@ -352,12 +360,14 @@
     await sleep(50); scrollToBottom();
 
     for(let i=0;i<conversation.length;i++){
-      const {agent, content} = conversation[i] || {};
+      const {agent, content, delay: perMsgDelay, typingDelay: perMsgTyping} = conversation[i] || {};
       const mine = isViewer(agent);
 
+      // Typing bubble before each message
       let typingRow = null;
       if(!mine) typingRow = await showTyping(agent);
-      await sleep(220 + Math.random()*180);
+      const typingPause = (perMsgTyping != null) ? perMsgTyping : (220 + Math.random()*180);
+      await sleep(typingPause);
       if (typingRow?.isConnected) typingRow.remove();
 
       const msg = createMessage(agent, content);
@@ -372,8 +382,8 @@
       }
 
       const prevLong = i>0 && conversation[i-1]?.agent===agent && (conversation[i-1]?.content||'').length>60;
-      let delay = calculateMessageDelay(agent, content);
-      if (prevLong) delay *= 1.5;
+      let delay = (perMsgDelay != null) ? perMsgDelay : calculateMessageDelay(agent, content);
+      if (perMsgDelay == null && prevLong) delay *= 1.5;
       await sleep(delay);
     }
   }
