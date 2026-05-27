@@ -188,13 +188,15 @@ async function startRealtimeScreencast(page, ff) {
   const writeFrame = (buf) => {
     if (!buf || !ff?.stdin?.writable) return false;
     try {
-      ff.stdin.write(buf);
-      written += 1;
-      return true;
+      const ok = ff.stdin.write(buf);
+      if (ok) written += 1;
+      return ok;
     } catch {
       return false;
     }
   };
+  // Suppress EPIPE errors — harmless, happens when ffmpeg is already closing
+  ff.stdin.on('error', () => {});
 
   client.on('Page.screencastFrame', async ({ data, metadata, sessionId }) => {
     try {
@@ -313,9 +315,17 @@ async function startRealtimeScreencast(page, ff) {
 
     // Screencast + ffmpeg sauber beenden
     await sc.stop();
+    // Give ffmpeg time to process buffered frames before killing
     try { ff.stdin.end(); } catch {}
-    await new Promise(res => setTimeout(res, 200)); // kleines Flush
+    await new Promise(res => setTimeout(res, 500)); // kleines Flush
     try { ff.kill('SIGINT'); } catch {}
+    // Wait for ffmpeg to exit cleanly
+    await new Promise(res => {
+      let done = false;
+      const finish = () => { if (!done) { done = true; res(); } };
+      const t = setTimeout(() => { finish(); }, 3000);
+      ff.on('exit', (code) => { clearTimeout(t); log(`ffmpeg exit code: ${code}`); finish(); });
+    });
 
     await browser.close();
     log(`✅ Fertig: ${outFile}`);

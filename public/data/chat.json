@@ -1,88 +1,94 @@
 {
-  "meta": {
-    "series": "AI Council",
-    "id": "009-quick-sync-witness-protection",
-    "hook": "POV: your boss says 'quick sync?' at 5:58pm",
-    "caption": "AI Council Case #002: 'quick sync?' at 5:58pm. If it was quick, why did my soul pack a bag?",
-    "hashtags": [
-      "aicouncil",
-      "worktok",
-      "officehumor",
-      "imessage",
-      "aitok"
-    ],
-    "source_prompt": "My boss messaged 'quick sync?' at 5:58pm and then asked if I had five minutes.",
-    "model_used": "Claws editor pass using pacing-comedy spec; no external API used in this scheduled tick",
-    "status": "candidate",
-    "target_runtime_seconds": "14-24",
-    "quality_note": "Second lane after the Close Friends test: work-drama wedge, brand-safer than dating, built around the contradiction that 'quick sync' after hours is never quick. CTA stays outside the chat."
-  },
-  "theme": "work",
+  "theme": "judgment",
   "poppiness": "juicy",
   "reducedMotion": false,
   "timing": {
     "minDelay": 650,
-    "charReadTime": 48,
-    "finalHold": 2400
+    "charReadTime": 55,
+    "finalHold": 3200
   },
   "agents": [
     {
       "name": "The Viewer",
-      "system_prompt": "The user. Tired office worker. Short anxious texts. Max 12 words."
+      "system_prompt": "The user. Short confused texts.",
+      "type": "user"
     },
     {
       "name": "pix 🔍",
-      "system_prompt": "Pattern detector. Reads workplace subtext. Max 10 words."
+      "system_prompt": "Gossip detector, pattern recognition. Shows the pattern, never announces it.",
+      "color": "#EF4444"
     },
     {
       "name": "zero.",
-      "system_prompt": "Brutal skeptic. No corporate euphemisms. Max 8 words."
+      "system_prompt": "Brutal skeptic. Economics, logistics, structural analysis. Never moralizes.",
+      "color": "#3B82F6"
     },
     {
       "name": "BLAZE🔥",
-      "system_prompt": "Chaos attorney. Overreacts, then lands one true point. Max 11 words."
+      "system_prompt": "Chaos. Caps. Absurd legal doctrines.",
+      "color": "#F97316"
     },
     {
       "name": "echo://",
-      "system_prompt": "Poetic villain. Turns office language into a weird metaphor. Max 11 words."
+      "system_prompt": "Poetic villain. Specific metaphors. No filler 'like'.",
+      "color": "#8B5CF6"
     },
     {
       "name": "byte.fm",
-      "system_prompt": "Dry final verdict. Screenshot-worthy. Max 12 words."
+      "system_prompt": "Final verdict. References council's own argument, not the original premise.",
+      "color": "#22C55E"
     }
   ],
   "conversation": [
     {
       "agent": "The Viewer",
-      "content": "my boss texted 'quick sync?' at 5:58pm."
+      "content": "since 2019, 'we've been AI-powered.' we made tote bags.",
+      "delay": 1000
     },
     {
       "agent": "The Viewer",
-      "content": "then said 'do you have five minutes?'"
+      "content": "we had one macbook and a vision board.",
+      "delay": 1000
     },
     {
       "agent": "pix 🔍",
-      "content": "five minutes is how meetings lure you inside."
+      "content": "vision board had a picture of a macbook.",
+      "delay": 1500,
+      "typingDelay": 400
     },
     {
       "agent": "zero.",
-      "content": "that is not a question. it's a portal."
+      "content": "ai costs: $0. tote revenue: $12 per bag. makes sense.",
+      "delay": 1800,
+      "typingDelay": 400
     },
     {
       "agent": "BLAZE🔥",
-      "content": "OBJECTION: the workday already left the group chat."
+      "content": "OBJECTION. the tote IS the ai. canvas regression model.",
+      "delay": 1600,
+      "typingDelay": 350
     },
     {
       "agent": "echo://",
-      "content": "he opened a calendar trap with soft hands."
-    },
-    {
-      "agent": "pix 🔍",
-      "content": "'quick sync' after hours means witness protection."
+      "content": "sewed a label that did more thinking than the company.",
+      "delay": 1800,
+      "typingDelay": 400
     },
     {
       "agent": "byte.fm",
-      "content": "if it was quick, why did your soul pack a bag?"
+      "content": "dreamt in AI. shipped in cotton. loves the honesty.",
+      "delay": 2800,
+      "typingDelay": 800
     }
-  ]
+  ],
+  "meta": {
+    "series": "AI Council",
+    "case_id": "019",
+    "hook": "POV: your startup promised AI but just made tote bags.",
+    "caption": "AI Council Case #012: 'AI-powered since 2019' — the company sold tote bags. Council investigates the gap.",
+    "pinned_comment": "Tag a startup that promised more than it delivered. Council investigates.",
+    "hashtags": ["#aicouncil", "#startup", "#aibubble", "#tiktok"],
+    "source_prompt": "Angle bank premise #25 — Pitch promising AI before AI",
+    "status": "candidate"
+  }
 }
