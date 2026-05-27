@@ -259,10 +259,12 @@ async function startRealtimeScreencast(page, ff) {
     // System-Chrome (arm64) bevorzugen
     let launchOptions = {
       headless: 'new',
+      executablePath: '/snap/bin/chromium',
       userDataDir: CFG.USER_DATA_DIR,
       defaultViewport: null,
       ignoreDefaultArgs: ['--enable-automation'],
       args: [
+        '--no-sandbox',
         '--no-first-run',
         '--no-default-browser-check',
         '--autoplay-policy=no-user-gesture-required',
@@ -273,11 +275,12 @@ async function startRealtimeScreencast(page, ff) {
     // Versuche Chrome-Kanal, sonst Puppeteer Chromium
     let browser;
     try {
-      log('🧭 Nutze System-Chrome (falls verfügbar) …');
-      browser = await puppeteer.launch({ ...launchOptions, channel: 'chrome' });
-    } catch {
-      log('⚠️ Chrome-Kanal nicht verfügbar, nutze bundled Chromium …');
+      log('🧭 Starte Snap-Chromium …');
       browser = await puppeteer.launch(launchOptions);
+    } catch (e) {
+      log('❌ Snap-Chromium fehlgeschlagen: ' + e.message.slice(0, 80));
+      log('⚠️ Kein funktionierender Browser gefunden. Render abgebrochen.');
+      return;
     }
 
     const page = (await browser.pages())[0] || await browser.newPage();
